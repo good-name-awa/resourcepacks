@@ -1,0 +1,42 @@
+name: Force Pull from GitLab
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'  # 每 30 分钟运行一次
+  workflow_dispatch:        # 支持手动触发
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout GitHub repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 必须完整历史，便于强制覆盖
+
+      - name: Configure Git Identity
+        run: |
+          git config --global user.email "1040466303@qq.com"
+          git config --global user.name "good-name-awa"
+      - name: Add GitLab remote and fetch
+        run: |
+          git remote add gitlab "https://${GITLAB_USERNAME}:${GITLAB_TOKEN}@gitlab.com/${GITLAB_USERNAME}/resourcepacks.git"
+          git fetch gitlab main
+        env:
+          GITLAB_USERNAME: ${{ secrets.GITLAB_USERNAME }}
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+
+      - name: Hard reset to GitLab main
+        run: |
+          git reset --hard gitlab/main
+      - name: Remove GitHub Actions default auth header
+        run: |
+          git config --local --unset-all http.https://github.com/.extraheader || true
+      - name: Force push to GitHub
+        run: |
+          echo "Force pushing to: https://${GH_USERNAME}:***@github.com/${GH_USERNAME}/resourcepacks.git"
+          git push --force "https://${GH_USERNAME}:${GH_TOKEN}@github.com/${GH_USERNAME}/resourcepacks.git" HEAD:main
+        env:
+          GH_USERNAME: ${{ secrets.GH_USERNAME }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
